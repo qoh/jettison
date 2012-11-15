@@ -566,8 +566,6 @@ function json_serialize_array( %object )
 
 function json_serialize( %data )
 {
-	echo( "json_serialize( " @ %data @ " )" );
-	
 	if ( %data.class $= "JSObject" )
 	{
 		return json_serialize_object( %data );
@@ -633,7 +631,6 @@ function json_dump( %data, %file )
 
 function json_dumps( %data )
 {
-	echo( "json_dumps(" @ %data SPC %data.class @ ")" );
 	return json_serialize( %data );
 }
 
