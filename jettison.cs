@@ -1,241 +1,4 @@
-function JSArray::onAdd( %this )
-{
-	%this.count = 0;
-	%this.json = true;
-}
-
-function JSArray::size( %this )
-{
-	return %this.count;
-}
-
-function JSArray::get( %this, %index )
-{
-	return %this.value[ %index ];
-}
-
-function JSArray::clear( %this )
-{
-	for ( %i = 0 ; %i < %this.count ; %i++ )
-	{
-		if ( %this.value[ %i ].json )
-		{
-			%this.value[ %i ].killTree();
-		}
-
-		%this.value[ %i ] = "";
-	}
-
-	%this.count = 0;
-}
-
-function JSArray::append( %this, %value )
-{
-	%this.value[ %this.count ] = %value;
-	%this.count++;
-}
-
-function JSArray::remove( %this, %value )
-{
-	%found = false;
-
-	for ( %i = 0 ; %i < %this.count ; %i++ )
-	{
-		if ( %found )
-		{
-			%this.value[ %i ] = %this.value[ %i + 1 ];
-		}
-		else
-		{
-			%found = true;
-			%i--;
-
-			continue;
-		}
-	}
-
-	if ( %found )
-	{
-		if ( %value.json )
-		{
-			%value.killTree();
-		}
-
-		%this.count--;
-		%this.value[ %this.count ] = "";
-	}
-
-	return %found;
-}
-
-function JSArray::contains( %this, %value )
-{
-	for ( %i = 0 ; %i < %this.count ; %i++ )
-	{
-		if ( %this.value[ %i ] $= %value )
-		{
-			return true;
-		}
-	}
-
-	return false;
-}
-
-function JSArray::echoDump( %this )
-{
-	echo( "JSArray(" @ %this.getID() @ ") - " @ %this.count @ " items" );
-
-	for ( %i = 0 ; %i < %this.count ; %i++ )
-	{
-		echo( " " @ %i @ ": " @ %this.value[ %i ] );
-	}
-
-	return %this;
-}
-
-function JSArray::killTree( %this )
-{
-	for ( %i = 0 ; %i < %this.count ; %i++ )
-	{
-		if ( %this.value[ %i ].json )
-		{
-			%this.value[ %i ].killTree();
-		}
-	}
-
-	%this.schedule( 0, "delete" );
-}
-
-function JSObject::onAdd( %this )
-{
-	%this.count = 0;
-	%this.json = true;
-}
-
-function JSObject::size( %this )
-{
-	return %this.count;
-}
-
-function JSObject::clear( %this )
-{
-	for ( %i = 0 ; %i < %this.count ; %i++ )
-	{
-		if ( %this.value[ %this.key[ %i ] ].json )
-		{
-			%this.value[ %this.key[ %i ] ].killTree();
-		}
-
-		%this.value[ %this.key[ %i ] ] = "";
-		%this.key[ %i ] = "";
-	}
-
-	%this.count = 0;
-}
-
-function JSObject::hasKey( %this, %key )
-{
-	for ( %i = 0 ; %i < %this.count ; %i++ )
-	{
-		if ( %this.key[ %i ] $= %key )
-		{
-			return true;
-		}
-	}
-
-	return false;
-}
-
-function JSObject::removeKey( %this, %key )
-{
-	%found = false;
-
-	for ( %i = 0 ; %i < %this.count ; %i++ )
-	{
-		if ( %found )
-		{
-			%this.key[ %i ] = %this.key[ %i + 1 ];
-		}
-		else
-		{
-			%found = true;
-			%i--;
-
-			continue;
-		}
-	}
-
-	if ( %found )
-	{
-		if ( %this.value[ %key ].json )
-		{
-			%this.value[ %key ].killTree();
-		}
-
-		%this.count--;
-		%this.value[ %key ] = "";
-		%this.key[ %this.count ] = "";
-	}
-
-	return %found;
-}
-
-function JSObject::get( %this, %key, %default )
-{
-	if ( %this.hasKey( %key ) )
-	{
-		return %this.value[ %key ];
-	}
-	else
-	{
-		return %default;
-	}
-}
-
-function JSObject::set( %this, %key, %value )
-{
-	%this.value[ %key ] = %value;
-
-	for ( %i = 0 ; %i < %this.count ; %i++ )
-	{
-		if ( %this.key[ %this.count ] $= %key )
-		{
-			%found = true;
-			break;
-		}
-	}
-
-	if ( !%found )
-	{
-		%this.key[ %this.count ] = %key;
-		%this.count++;
-	}
-}
-
-function JSObject::echoDump( %this )
-{
-	echo( "JSObject(" @ %this.getID() @ ") - " @ %this.count @ " keys" );
-
-	for ( %i = 0 ; %i < %this.count ; %i++ )
-	{
-		echo( " " @ %this.key[ %i ] @ ": " @ %this.value[ %this.key[ %i ] ] );
-	}
-
-	return %this;
-}
-
-function JSObject::killTree( %this )
-{
-	for ( %i = 0 ; %i < %this.count ; %i++ )
-	{
-		if ( %this.value[ %this.key[ %i ] ].json )
-		{
-			%this.value[ %this.key[ %i ] ].killTree();
-		}
-	}
-
-	%this.schedule( 0, "delete" );
-}
+exec( "./jsx.cs" );
 
 function json_match_number( %string, %index )
 {
@@ -307,7 +70,7 @@ function json_match_number( %string, %index )
 	return -1;
 }
 
-function json_parse_string( %string, %begin )
+function json_parse_string( %string, %begin, %fast )
 {
 	%index = %begin;
 	%length = strLen( %string );
@@ -327,16 +90,31 @@ function json_parse_string( %string, %begin )
 		{
 			%index = %index + %result + 1;
 		}
-		else
+		else 
 		{
-			return collapseEscape( getSubStr( %string, %begin, %index + %result - %begin ) ) TAB %index + %result + 1;
+			%string = collapseEscape( getSubStr( %string, %begin, %index + %result - %begin ) );
+
+			if ( %fast )
+			{
+				return %string TAB %index + %result + 1;
+			}
+			else
+			{
+				%obj = new scriptObject()
+				{
+					class = "JSString";
+					value = %string;
+				};
+
+				return %obj TAB %index + %result + 1;
+			}
 		}
 	}
 
 	return -1;
 }
 
-function json_parse_object( %string, %index )
+function json_parse_object( %string, %index, %fast )
 {
 	%length = strLen( %string );
 
@@ -382,7 +160,7 @@ function json_parse_object( %string, %index )
 
 	while ( true )
 	{
-		%value = json_parse_string( %string, %index + 1 );
+		%value = json_parse_string( %string, %index + 1, true );
 
 		if ( %value $= -1 )
 		{
@@ -441,7 +219,7 @@ function json_parse_object( %string, %index )
 			%next = getSubStr( %string, %index, 1 );
 		}
 
-		%out = json_scan_once( %string, %index );
+		%out = json_scan_once( %string, %index, %fast );
 
 		if ( %out $= -1 )
 		{
@@ -523,7 +301,7 @@ function json_parse_object( %string, %index )
 	return %object TAB %index + 1;
 }
 
-function json_parse_array( %string, %index )
+function json_parse_array( %string, %index, %fast )
 {
 	%length = strLen( %string );
 
@@ -564,7 +342,7 @@ function json_parse_array( %string, %index )
 
 	while ( true )
 	{
-		%value = json_scan_once( %string, %index );
+		%value = json_scan_once( %string, %index, %fast );
 
 		if ( %value $= -1 )
 		{
@@ -649,38 +427,76 @@ function json_parse_array( %string, %index )
 	return %object TAB %index + 1;
 }
 
-function json_scan_once( %string, %index )
+function json_scan_once( %string, %index, %fast )
 {
 	%char = getSubStr( %string, %index, 1 );
 
 	if ( %char $= "\"" )
 	{
-		return json_parse_string( %string, %index + 1 );
+		return json_parse_string( %string, %index + 1, %fast );
 	}
 
 	if ( %char $= "{" )
 	{
-		return json_parse_object( %string, %index + 1 );
+		return json_parse_object( %string, %index + 1, %fast );
 	}
 
 	if ( %char $= "[" )
 	{
-		return json_parse_array( %string, %index + 1 );
+		return json_parse_array( %string, %index + 1, %fast );
 	}
 
 	if ( %char $= "n" && getSubStr( %string, %index, 4 ) $= "null" )
 	{
-		return "" TAB %index + 4;
+		if ( %fast )
+		{
+			return "" TAB %index + 4;
+		}
+		else
+		{
+			%obj = new scriptObject()
+			{
+				class = "JSNull";
+			};
+
+			return %obj TAB %index + 4;
+		}
 	}
 
 	if ( %char $= "t" && getSubStr( %string, %index, 4 ) $= "true" )
 	{
-		return 1 TAB %index + 4;
+		if ( %fast )
+		{
+			return 1 TAB %index + 4;
+		}
+		else
+		{
+			%obj = new scriptObject()
+			{
+				class = "JSBool";
+				value = 1;
+			};
+
+			return %obj TAB %index + 4;
+		}
 	}
 
 	if ( %char $= "f" && getSubStr( %string, %index, 5 ) $= "false" )
 	{
-		return 0 TAB %index + 5;
+		if ( %fast )
+		{
+			return 0 TAB %index + 5;
+		}
+		else
+		{
+			%obj = new scriptObject()
+			{
+				class = "JSBool";
+				value = 0;
+			};
+
+			return %obj TAB %index + 5;
+		}
 	}
 
 	%match = json_match_number( %string, %index );
@@ -693,7 +509,20 @@ function json_scan_once( %string, %index )
 			return -1;
 		}
 
-		return %match TAB %index + %length;
+		if ( %fast )
+		{
+			return %match TAB %index + %length;
+		}
+		else
+		{
+			%obj = new scriptObject()
+			{
+				class = "JSNumber";
+				value = %match;
+			};
+
+			return %obj TAB %index + %length;
+		}
 	}
 
 	return -1;
@@ -737,6 +566,8 @@ function json_serialize_array( %object )
 
 function json_serialize( %data )
 {
+	echo( "json_serialize( " @ %data @ " )" );
+	
 	if ( %data.class $= "JSObject" )
 	{
 		return json_serialize_object( %data );
@@ -744,6 +575,22 @@ function json_serialize( %data )
 	else if ( %data.class $= "JSArray" )
 	{
 		return json_serialize_array( %data );
+	}
+	else if ( %data.class $= "JSString" )
+	{
+		return "\"" @ expandEscape( %data.value ) @ "\"";
+	}
+	else if ( %data.class $= "JSNumber" )
+	{
+		return %data.value;
+	}
+	else if ( %data.class $= "JSBool" )
+	{
+		return ( %data.value ? "true" : "false" );
+	}
+	else if ( %data.class $= "JSNull" )
+	{
+		return "null";
 	}
 	else if ( !strLen( %data ) )
 	{
@@ -786,10 +633,11 @@ function json_dump( %data, %file )
 
 function json_dumps( %data )
 {
+	echo( "json_dumps(" @ %data SPC %data.class @ ")" );
 	return json_serialize( %data );
 }
 
-function json_load( %file )
+function json_load( %file, %fast )
 {
 	if ( !isFile( %file ) )
 	{
@@ -807,10 +655,10 @@ function json_load( %file )
 	%fo.close();
 	%fo.delete();
 
-	return json_loads( %json );
+	return json_loads( %json, %fast );
 }
 
-function json_loads( %json )
+function json_loads( %json, %fast )
 {
-	return getField( json_scan_once( trim( %json ), 0 ), 0 );
+	return getField( json_scan_once( trim( %json ), 0, %fast ), 0 );
 }
