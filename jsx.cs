@@ -83,7 +83,7 @@ function JSBool::killTree( %this )
 
 function JSNull::killTree( %this )
 {
-	%this.schedule( 0, "delete" );
+	// This is static; don't get rid of it.
 }
 
 // describe methods.

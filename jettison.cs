@@ -454,10 +454,13 @@ function json_scan_once( %string, %index, %fast )
 		}
 		else
 		{
-			%obj = new scriptObject()
+			if ( !isObject( %obj = nameToID( "_JSNull" ) ) )
 			{
-				class = "JSNull";
-			};
+				%obj = new scriptObject( "_JSNull" )
+				{
+					class = "JSNull";
+				};
+			}
 
 			return %obj TAB %index + 4;
 		}
