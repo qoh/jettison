@@ -137,7 +137,7 @@ function JSObject::hasKey( %this, %key )
 {
 	for ( %i = 0 ; %i < %this.count ; %i++ )
 	{
-		if ( %this.key[ %i ] $= %value )
+		if ( %this.key[ %i ] $= %key )
 		{
 			return true;
 		}
