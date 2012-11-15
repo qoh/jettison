@@ -2,13 +2,19 @@
 
 ## What is Jettison?
 
-Jettison is a "basic" JSON parser that supports every documented JSON data structure (object, array, string, int, float, false, true, null) except for NaN, Infinity and -Infinity. It provides (currently) the following two functions (obviously defines more, but these are the functions to use):
+Jettison is a "basic" JSON parser that supports every documented JSON data structure (object, array, string, int, float, false, true, null) except for NaN, Infinity and -Infinity. It provides (currently) the following four functions (obviously defines more, but these are the functions to use):
+
+**json_dump( data, file )**  
+Wrapper to invoke *json_dumps* with *data* and save the output to *file*.
+
+**json_dumps( data )**  
+Serializes *data* into a JSON string. Exact intended value types cannot be determined, it's based on guessing. See below.
 
 **json_load( file )**  
-Wrapper to read file and pass it to json_loads.
+Wrapper to read *file* and pass it to *json_loads*.
 
 **json_loads( json )**  
-Parses json and returns the data (see "parse output" section) or -1 if an error occurs while parsing.
+Parses *json* and returns the data (see "parse output" section) or -1 if an error occurs while parsing.
 
 Here's an example:
 
@@ -26,6 +32,18 @@ Here's an example:
      1: 2
      2: 3
      3: foo
+    ==>echo( json_dumps( 9627 ) );
+    [1,2,3,"foo"]
+
+Note about *json_dumps*:
+
+It cannot determine the exact type of value you're intending to be using. Instead, it inspects the value and does a few tests to try to find out what type of value it is. Here's the exact "order of tests":
+
+* If it's an object with the class *JSObject*, treat it as an object.
+* If it's an object with the class *JSArray*, treat it as an array.
+* If it's a blank string, treat it as *null*.
+* If it can be represented as a number in JSON, treat it as a number.
+* If all else fails, treat it as a string.
 
 ## Parse Output
 
