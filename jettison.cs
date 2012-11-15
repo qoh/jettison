@@ -482,8 +482,6 @@ function json_parse_object( %string, %index )
 			%next = getSubStr( %string, %index, 1 );
 		}
 
-		echo( getSubStr( %string, %index, %length ) );
-
 		if ( %next $= "}" )
 		{
 			break;
@@ -648,7 +646,7 @@ function json_parse_array( %string, %index )
 		}
 	}
 
-	return %object TAB %index;
+	return %object TAB %index + 1;
 }
 
 function json_scan_once( %string, %index )
