@@ -256,7 +256,7 @@ function json_match_number( %string, %index )
 			{
 				return "";
 			}
-			
+
 			if ( %stage == 2 )
 			{
 				return -1;
@@ -699,6 +699,113 @@ function json_scan_once( %string, %index )
 	}
 
 	return -1;
+}
+
+function json_serialize_object( %object )
+{
+	%json = "{";
+
+	for ( %i = 0 ; %i < %object.count ; %i++ )
+	{
+		%json = %json @ "\"" @ expandEscape( %object.key[ %i ] ) @ "\"";
+		%json = %json @ ":";
+		%json = %json @ json_serialize( %object.value[ %object.key[ %i ] ] );
+
+		if ( %i != %object.count - 1 )
+		{
+			%json = %json @ ",";
+		}
+	}
+
+	return %json @ "}";
+}
+
+function json_serialize_array( %object )
+{
+	%json = "[";
+
+	for ( %i = 0 ; %i < %object.count ; %i++ )
+	{
+		%json = %json @ json_serialize( %object.value[ %i ] );
+
+		if ( %i != %object.count - 1 )
+		{
+			%json = %json @ ",";
+		}
+	}
+
+	return %json @ "]";
+}
+
+function json_serialize_object( %object )
+{
+	%json = "{";
+
+	for ( %i = 0 ; %i < %object.count ; %i++ )
+	{
+		%json = %json @ "\"" @ expandEscape( %object.key[ %i ] ) @ "\":" @ json_serialize( %object.value[ %object.key[ %i ] ] );
+
+		if ( %i != %object.count - 1 )
+		{
+			%json = %json @ ",";
+		}
+	}
+
+	return %json @ "}";
+}
+
+function json_serialize( %data )
+{
+	if ( %data.class $= "JSObject" )
+	{
+		return json_serialize_object( %data );
+	}
+	else if ( %data.class $= "JSArray" )
+	{
+		return json_serialize_array( %data );
+	}
+	else if ( !strLen( %data ) )
+	{
+		return "null";
+	}
+	else if ( strLen( json_match_number( %data, 0 ) ) )
+	{
+		return %data;
+	}
+	else
+	{
+		return "\"" @ expandEscape( %data ) @ "\"";
+	}
+}
+
+function json_dump( %data, %file )
+{
+	%json = json_dumps( %data );
+
+	if ( %json $= -1 )
+	{
+		error( "json_dump() - failed to serialize data" );
+		return -1;
+	}
+
+	if ( !isWriteableFileName( %file ) )
+	{
+		error( "json_dump() - file is not a writeable file name" );
+		return -1;
+	}
+
+	%fo = new fileObject();
+	%fo.openForWrite( %file );
+	%fo.writeLine( %json );
+	%fo.close();
+	%fo.delete();
+
+	return %json;
+}
+
+function json_dumps( %data )
+{
+	return json_serialize( %data );
 }
 
 function json_load( %file )
