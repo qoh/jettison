@@ -735,23 +735,6 @@ function json_serialize_array( %object )
 	return %json @ "]";
 }
 
-function json_serialize_object( %object )
-{
-	%json = "{";
-
-	for ( %i = 0 ; %i < %object.count ; %i++ )
-	{
-		%json = %json @ "\"" @ expandEscape( %object.key[ %i ] ) @ "\":" @ json_serialize( %object.value[ %object.key[ %i ] ] );
-
-		if ( %i != %object.count - 1 )
-		{
-			%json = %json @ ",";
-		}
-	}
-
-	return %json @ "}";
-}
-
 function json_serialize( %data )
 {
 	if ( %data.class $= "JSObject" )
