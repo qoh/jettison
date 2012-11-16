@@ -98,7 +98,7 @@ function json_match_number( %string, %index )
 	return "";
 }
 
-function json_parse_string( %string, %begin, %slow )
+function json_parse_string( %string, %begin )
 {
 	%index = %begin;
 	%length = strLen( %string );
