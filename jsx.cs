@@ -1,4 +1,4 @@
-// Initialization methods.
+// onAdd method (shared).
 
 function JSObject::onAdd( %this )
 {
@@ -14,39 +14,18 @@ function JSArray::onAdd( %this )
 	%this.type = "array";
 }
 
-function JSString::onAdd( %this )
-{
-	%this.json = true;
-	%this.type = "string";
-}
-
-function JSNumber::onAdd( %this )
-{
-	%this.json = true;
-	%this.type = "number";
-}
-
-function JSBool::onAdd( %this )
-{
-	%this.json = true;
-	%this.type = "bool";
-}
-
-function JSNull::onAdd( %this )
-{
-	%this.json = true;
-	%this.type = "null";
-}
-
-// killTree methods.
+// killTree method (shared).
 
 function JSObject::killTree( %this )
 {
 	for ( %i = 0 ; %i < %this.count ; %i++ )
 	{
-		if ( %this.value[ %this.key[ %i ] ].json )
+		%value = %this.value[ %this.key[ %i ] ];
+		%type = js_type( %value );
+
+		if ( %type $= "object" || %type $= "array" )
 		{
-			%this.value[ %this.key[ %i ] ].killTree();
+			%value.killTree();
 		}
 	}
 
@@ -57,36 +36,19 @@ function JSArray::killTree( %this )
 {
 	for ( %i = 0 ; %i < %this.count ; %i++ )
 	{
-		if ( %this.value[ %i ].json )
+		%value = %this.value[ %i ];
+		%type = js_type( %value );
+
+		if ( %type $= "object" || %type $= "array" )
 		{
-			%this.value[ %i ].killTree();
+			%value.killTree();
 		}
 	}
 
 	%this.schedule( 0, "delete" );
 }
 
-function JSString::killTree( %this )
-{
-	%this.schedule( 0, "delete" );
-}
-
-function JSNumber::killTree( %this )
-{
-	%this.schedule( 0, "delete" );
-}
-
-function JSBool::killTree( %this )
-{
-	%this.schedule( 0, "delete" );
-}
-
-function JSNull::killTree( %this )
-{
-	// This is static; don't get rid of it.
-}
-
-// describe methods.
+// describe method (shared).
 
 function JSObject::describe( %this, %child )
 {
@@ -94,16 +56,12 @@ function JSObject::describe( %this, %child )
 
 	for ( %i = 0 ; %i < %this.count && !%child ; %i++ )
 	{
-		%string = %string @ "\n " @ %this.key[ %i ] @ ": ";
+		%value = %this.value[ %this.key[ %i ] ];
+		%type = js_type( %value );
 
-		if ( %this.value[ %this.key[ %i ] ].json )
-		{
-			%string = %string @ %this.value[ %this.key[ %i ] ].describe( true );
-		}
-		else
-		{
-			%string = %string @ %this.value[ %this.key[ %i ] ];
-		}
+		%string = %string @ "\n " @ %this.key[ %i ];
+		%string = %string @ " (" @ %type @ "): ";
+		%string = %string @ %value;
 	}
 
 	return %string;
@@ -115,39 +73,15 @@ function JSArray::describe( %this, %child )
 
 	for ( %i = 0 ; %i < %this.count && !%child ; %i++ )
 	{
-		%string = %string @ "\n " @ %i @ ": ";
+		%value = %this.value[ %i ];
+		%type = js_type( %value );
 
-		if ( %this.value[ %i ].json )
-		{
-			%string = %string @ %this.value[ %i ].describe( true );
-		}
-		else
-		{
-			%string = %string @ %this.value[ %i ];
-		}
+		%string = %string @ "\n " @ %i;
+		%string = %string @ " (" @ %type @ "): ";
+		%string = %string @ %value;
 	}
 
 	return %string;
-}
-
-function JSString::describe( %this )
-{
-	return "string[" @ %this.getID() @ "] = " @ %this.value;
-}
-
-function JSNumber::describe( %this )
-{
-	return "number[" @ %this.getID() @ "] = " @ %this.value;
-}
-
-function JSBool::describe( %this )
-{
-	return "bool[" @ %this.getID() @ "] = " @ ( %this.value ? "true" : "false" );
-}
-
-function JSNull::describe( %this )
-{
-	return "null[" @ %this.getID() @ "]";
 }
 
 // Private JSObject methods.
@@ -161,9 +95,12 @@ function JSObject::clear( %this )
 {
 	for ( %i = 0 ; %i < %this.count ; %i++ )
 	{
-		if ( %this.value[ %this.key[ %i ] ].json )
+		%value = %this.value[ %this.key[ %i ] ];
+		%type = js_type( %value );
+		
+		if ( %type $= "object" || %type $= "array" )
 		{
-			%this.value[ %this.key[ %i ] ].killTree();
+			%value.killTree();
 		}
 
 		%this.value[ %this.key[ %i ] ] = "";
@@ -207,9 +144,12 @@ function JSObject::removeKey( %this, %key )
 
 	if ( %found )
 	{
-		if ( %this.value[ %key ].json )
+		%value = %this.value[ %key ];
+		%type = js_type( %value );
+		
+		if ( %type $= "object" || %type $= "array" )
 		{
-			%this.value[ %key ].killTree();
+			%value.killTree();
 		}
 
 		%this.count--;
@@ -234,6 +174,14 @@ function JSObject::get( %this, %key, %default )
 
 function JSObject::set( %this, %key, %value )
 {
+	%old = %this.value[ %key ];
+	%type = js_type( %old );
+		
+	if ( %type $= "object" || %type $= "array" )
+	{
+		%old.killTree();
+	}
+
 	%this.value[ %key ] = %value;
 
 	for ( %i = 0 ; %i < %this.count ; %i++ )
@@ -268,9 +216,12 @@ function JSArray::clear( %this )
 {
 	for ( %i = 0 ; %i < %this.count ; %i++ )
 	{
-		if ( %this.value[ %i ].json )
+		%value = %this.value[ %i ];
+		%type = js_type( %value );
+
+		if ( %type $= "object" || %type $= "array" )
 		{
-			%this.value[ %i ].killTree();
+			%value.killTree();
 		}
 
 		%this.value[ %i ] = "";
@@ -306,7 +257,9 @@ function JSArray::remove( %this, %value )
 
 	if ( %found )
 	{
-		if ( %value.json )
+		%type = js_type( %value );
+
+		if ( %type $= "object" || %type $= "array" )
 		{
 			%value.killTree();
 		}
@@ -329,40 +282,4 @@ function JSArray::contains( %this, %value )
 	}
 
 	return false;
-}
-
-// Private JSString methods.
-
-function JSString::set( %this, %value )
-{
-	%this.value = %value;
-}
-
-function JSString::get( %this )
-{
-	return %this.value;
-}
-
-// Private JSNumber methods.
-
-function JSNumber::set( %this, %value )
-{
-	%this.value = ( strLen( %value ) ? %value : 0 );
-}
-
-function JSNumber::get( %this )
-{
-	return %this.value;
-}
-
-// Private JSBool methods.
-
-function JSNumber::set( %this, %value )
-{
-	%this.value = ( %value ? 1 : 0 );
-}
-
-function JSNumber::get( %this )
-{
-	return %this.value;
 }

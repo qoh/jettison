@@ -1,5 +1,33 @@
 exec( "./jsx.cs" );
 
+function js_type( %value )
+{
+	%length = strLen( %value );
+
+	if ( %length )
+	{
+		%data = getSubStr( %value, 0, %length - 1 );
+		%last = getSubStr( %value, %length - 1, 1 );
+
+		if ( %data.json && expandEscape( %last ) $= "\\c0" )
+		{
+			return %data.type;
+		}
+	}
+
+	if ( !%length )
+	{
+		return "null";
+	}
+
+	if ( strLen( json_match_number( %value, 0 ) ) $= %length )
+	{
+		return "number";
+	}
+
+	return "string";
+}
+
 function json_match_number( %string, %index )
 {
 	%output = "";
@@ -22,7 +50,7 @@ function json_match_number( %string, %index )
 
 			if ( %stage == 2 )
 			{
-				return -1;
+				return -65536;
 			}
 
 			return %output;
@@ -32,7 +60,7 @@ function json_match_number( %string, %index )
 		{
 			if ( %minus || %stage != 0 )
 			{
-				return -1;
+				return -65536;
 			}
 
 			%minus = true;
@@ -46,7 +74,7 @@ function json_match_number( %string, %index )
 			}
 			else
 			{
-				return -1;
+				return -65536;
 			}
 		}
 		else if ( %stage == 2 )
@@ -67,10 +95,10 @@ function json_match_number( %string, %index )
 		return %output;
 	}
 
-	return -1;
+	return "";
 }
 
-function json_parse_string( %string, %begin, %fast )
+function json_parse_string( %string, %begin, %slow )
 {
 	%index = %begin;
 	%length = strLen( %string );
@@ -81,7 +109,7 @@ function json_parse_string( %string, %begin, %fast )
 
 		if ( %pos < 0 )
 		{
-			return -1;
+			return -65536;
 		}
 
 		%before = getSubStr( %string, %index + %result - 1, 1 );
@@ -92,35 +120,20 @@ function json_parse_string( %string, %begin, %fast )
 		}
 		else 
 		{
-			%string = collapseEscape( getSubStr( %string, %begin, %index + %result - %begin ) );
-
-			if ( %fast )
-			{
-				return %string TAB %index + %result + 1;
-			}
-			else
-			{
-				%obj = new scriptObject()
-				{
-					class = "JSString";
-					value = %string;
-				};
-
-				return %obj TAB %index + %result + 1;
-			}
+			return collapseEscape( getSubStr( %string, %begin, %index + %result - %begin ) ) TAB %index + %result + 1;
 		}
 	}
 
-	return -1;
+	return -65536;
 }
 
-function json_parse_object( %string, %index, %fast )
+function json_parse_object( %string, %index )
 {
 	%length = strLen( %string );
 
 	if ( %length - %index < 1 )
 	{
-		return -1;
+		return -65536;
 	}
 
 	%next = getSubStr( %string, %index, 1 );
@@ -139,7 +152,7 @@ function json_parse_object( %string, %index, %fast )
 
 			if ( %index >= %length )
 			{
-				return -1;
+				return -65536;
 			}
 
 			%next = getSubStr( %string, %index, 1 );
@@ -152,19 +165,24 @@ function json_parse_object( %string, %index, %fast )
 				class = "JSObject";
 			};
 
-			return %object TAB %index + 1;
+			return %object @ "\c0" TAB %index + 1;
 		}
 
-		return -1;
+		return -65536;
 	}
 
 	while ( true )
 	{
-		%value = json_parse_string( %string, %index + 1, true );
+		%value = json_parse_string( %string, %index + 1 );
 
-		if ( %value $= -1 )
+		if ( %value == -65536 )
 		{
-			return -1;
+			if ( isObject( %object ) )
+			{
+				%object.killTree();
+			}
+
+			return -65536;
 		}
 
 		%key = getField( %value, 0 );
@@ -186,7 +204,12 @@ function json_parse_object( %string, %index, %fast )
 
 				if ( %index >= %length )
 				{
-					return -1;
+					if ( isObject( %obj ) )
+					{
+						%object.killTree();
+					}
+
+					return -65536;
 				}
 
 				%next = getSubStr( %string, %index, 1 );
@@ -194,7 +217,12 @@ function json_parse_object( %string, %index, %fast )
 
 			if ( %next !$= ":" )
 			{
-				return -1;
+				if ( isObject( %obj ) )
+				{
+					%object.killTree();
+				}
+
+				return -65536;
 			}
 		}
 
@@ -213,17 +241,27 @@ function json_parse_object( %string, %index, %fast )
 
 			if ( %index >= %length )
 			{
-				return -1;
+				if ( isObject( %obj ) )
+				{
+					%object.killTree();
+				}
+
+				return -65536;
 			}
 
 			%next = getSubStr( %string, %index, 1 );
 		}
 
-		%out = json_scan_once( %string, %index, %fast );
+		%out = json_scan_once( %string, %index );
 
-		if ( %out $= -1 )
+		if ( %out == -65536 )
 		{
-			return -1;
+			if ( isObject( %obj ) )
+			{
+				%object.killTree();
+			}
+
+			return -65536;
 		}
 
 		%value = getField( %out, 0 );
@@ -253,8 +291,8 @@ function json_parse_object( %string, %index, %fast )
 
 			if ( %index >= %length )
 			{
-				%object.delete();
-				return -1;
+				%object.killTree();
+				return -65536;
 			}
 
 			%next = getSubStr( %string, %index, 1 );
@@ -267,14 +305,14 @@ function json_parse_object( %string, %index, %fast )
 
 		if ( %next !$= "," )
 		{
-			%object.delete();
-			return -1;
+			%object.killTree();
+			return -65536;
 		}
 
 		if ( %index >= %length )
 		{
-			%object.delete();
-			return -1;
+			%object.killTree();
+			return -65536;
 		}
 
 		%index++;
@@ -292,22 +330,22 @@ function json_parse_object( %string, %index, %fast )
 
 			if ( %index >= %length )
 			{
-				%obj.delete();
-				return -1;
+				%object.killTree();
+				return -65536;
 			}
 		}
 	}
 
-	return %object TAB %index + 1;
+	return %object @ "\c0" TAB %index + 1;
 }
 
-function json_parse_array( %string, %index, %fast )
+function json_parse_array( %string, %index )
 {
 	%length = strLen( %string );
 
 	if ( %length - %index < 1 )
 	{
-		return -1;
+		return -65536;
 	}
 
 	%next = getSubStr( %string, %index, 1 );
@@ -324,7 +362,7 @@ function json_parse_array( %string, %index, %fast )
 
 		if ( %index >= %length )
 		{
-			return -1;
+			return -65536;
 		}
 
 		%next = getSubStr( %string, %index, 1 );
@@ -337,21 +375,21 @@ function json_parse_array( %string, %index, %fast )
 			class = "JSArray";
 		};
 
-		return %object TAB %index + 1;
+		return %object @ "\c0" TAB %index + 1;
 	}
 
 	while ( true )
 	{
-		%value = json_scan_once( %string, %index, %fast );
+		%value = json_scan_once( %string, %index );
 
-		if ( %value $= -1 )
+		if ( %value $= "-65536" )
 		{
 			if ( isObject( %object ) )
 			{
-				%object.delete();
+				%object.killTree();
 			}
 
-			return -1;
+			return -65536;
 		}
 
 		if ( !isObject( %object ) )
@@ -379,8 +417,8 @@ function json_parse_array( %string, %index, %fast )
 
 			if ( %index >= %length )
 			{
-				%object.delete();
-				return -1;
+				%object.killTree();
+				return -65536;
 			}
 
 			%next = getSubStr( %string, %index, 1 );
@@ -393,14 +431,14 @@ function json_parse_array( %string, %index, %fast )
 
 		if ( %next !$= "," )
 		{
-			%object.delete();
-			return -1;
+			%object.killTree();
+			return -65536;
 		}
 
 		if ( %index >= %length )
 		{
-			%object.delete();
-			return -1;
+			%object.killTree();
+			return -65536;
 		}
 
 		%index++;
@@ -418,88 +456,47 @@ function json_parse_array( %string, %index, %fast )
 
 			if ( %index >= %length )
 			{
-				%object.delete();
-				return -1;
+				%object.killTree();
+				return -65536;
 			}
 		}
 	}
 
-	return %object TAB %index + 1;
+	return %object @ "\c0" TAB %index + 1;
 }
 
-function json_scan_once( %string, %index, %fast )
+function json_scan_once( %string, %index )
 {
 	%char = getSubStr( %string, %index, 1 );
 
 	if ( %char $= "\"" )
 	{
-		return json_parse_string( %string, %index + 1, %fast );
+		return json_parse_string( %string, %index + 1 );
 	}
 
 	if ( %char $= "{" )
 	{
-		return json_parse_object( %string, %index + 1, %fast );
+		return json_parse_object( %string, %index + 1 );
 	}
 
 	if ( %char $= "[" )
 	{
-		return json_parse_array( %string, %index + 1, %fast );
+		return json_parse_array( %string, %index + 1 );
 	}
 
 	if ( %char $= "n" && getSubStr( %string, %index, 4 ) $= "null" )
 	{
-		if ( %fast )
-		{
-			return "" TAB %index + 4;
-		}
-		else
-		{
-			if ( !isObject( %obj = nameToID( "_JSNull" ) ) )
-			{
-				%obj = new scriptObject( "_JSNull" )
-				{
-					class = "JSNull";
-				};
-			}
-
-			return %obj TAB %index + 4;
-		}
+		return "" TAB %index + 4;
 	}
 
 	if ( %char $= "t" && getSubStr( %string, %index, 4 ) $= "true" )
 	{
-		if ( %fast )
-		{
-			return 1 TAB %index + 4;
-		}
-		else
-		{
-			%obj = new scriptObject()
-			{
-				class = "JSBool";
-				value = 1;
-			};
-
-			return %obj TAB %index + 4;
-		}
+		return "1" TAB %index + 4;
 	}
 
 	if ( %char $= "f" && getSubStr( %string, %index, 5 ) $= "false" )
 	{
-		if ( %fast )
-		{
-			return 0 TAB %index + 5;
-		}
-		else
-		{
-			%obj = new scriptObject()
-			{
-				class = "JSBool";
-				value = 0;
-			};
-
-			return %obj TAB %index + 5;
-		}
+		return "0" TAB %index + 5;
 	}
 
 	%match = json_match_number( %string, %index );
@@ -507,28 +504,15 @@ function json_scan_once( %string, %index, %fast )
 
 	if ( %length )
 	{
-		if ( %match $= -1 )
+		if ( %match == -65536 )
 		{
-			return -1;
+			return -65536;
 		}
 
-		if ( %fast )
-		{
-			return %match TAB %index + %length;
-		}
-		else
-		{
-			%obj = new scriptObject()
-			{
-				class = "JSNumber";
-				value = %match;
-			};
-
-			return %obj TAB %index + %length;
-		}
+		return %match TAB %index + %length;
 	}
 
-	return -1;
+	return -65536;
 }
 
 function json_serialize_object( %object )
@@ -569,6 +553,9 @@ function json_serialize_array( %object )
 
 function json_serialize( %data )
 {
+	%type = js_type( %data );
+
+	// if ( %type $= "" )
 	if ( %data.class $= "JSObject" )
 	{
 		return json_serialize_object( %data );
@@ -611,16 +598,16 @@ function json_dump( %data, %file )
 {
 	%json = json_dumps( %data );
 
-	if ( %json $= -1 )
+	if ( %json == -65536 )
 	{
 		error( "json_dump() - failed to serialize data" );
-		return -1;
+		return -65536;
 	}
 
 	if ( !isWriteableFileName( %file ) )
 	{
 		error( "json_dump() - file is not a writeable file name" );
-		return -1;
+		return -65536;
 	}
 
 	%fo = new fileObject();
@@ -637,11 +624,11 @@ function json_dumps( %data )
 	return json_serialize( %data );
 }
 
-function json_load( %file, %fast )
+function json_load( %file )
 {
 	if ( !isFile( %file ) )
 	{
-		return -1;
+		return -65536;
 	}
 
 	%fo = new fileObject();
@@ -655,10 +642,10 @@ function json_load( %file, %fast )
 	%fo.close();
 	%fo.delete();
 
-	return json_loads( %json, %fast );
+	return json_loads( %json );
 }
 
-function json_loads( %json, %fast )
+function json_loads( %json )
 {
-	return getField( json_scan_once( trim( %json ), 0, %fast ), 0 );
+	return getField( json_scan_once( trim( %json ), 0 ), 0 );
 }
