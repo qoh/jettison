@@ -28,69 +28,61 @@ function js_type( %value )
 	return "string";
 }
 
-function json_match_number( %string, %index )
+function json_match_number( %string, %index, %strict )
 {
 	%output = "";
 	%length = strLen( %string );
 
-	%allow = "0123456789-.";
-	%minus = false;
+	if ( !%length )
+	{
+		return "";
+	}
+
+	%test = %string;
+
+	if ( getSubStr( %test, 0, 1 ) $= "-" )
+	{
+		%test = getSubStr( %test, 1, %length );
+		%length--;
+	}
+
+	%allow = "0123456789.";
 	%stage = 0;
 
 	for ( %index ; %index < %length ; %index++ )
 	{
-		%char = getSubStr( %string, %index, 1 );
+		%char = getSubStr( %test, %index, 1 );
 
 		if ( strPos( %allow, %char ) < 0 )
 		{
-			if ( %stage == 0 )
+			if ( !%strict && strLen( %output ) && %stage != 1 )
 			{
-				return "";
+				return %output;
 			}
-
-			if ( %stage == 2 )
-			{
-				return -65536;
-			}
-
-			return %output;
-		}
-
-		if ( %char $= "-" )
-		{
-			if ( %minus || %stage != 0 )
-			{
-				return -65536;
-			}
-
-			%minus = true;
+			
+			return "";
 		}
 
 		if ( %char $= "." )
 		{
-			if ( %stage == 1 )
+			if ( %stage == 0 )
 			{
-				%stage = 2;
+				%stage = 1;
 			}
 			else
 			{
-				return -65536;
+				return "";
 			}
 		}
-		else if ( %stage == 2 )
+		else if ( %stage == 1 )
 		{
-			%stage = 3;
+			%stage = 2;
 		}
 
 		%output = %output @ %char;
-
-		if ( %stage == 0 )
-		{
-			%stage = 1;
-		}
 	}
 
-	if ( strLen( %output ) && %stage != 2 )
+	if ( strLen( %output ) && %stage != 1 )
 	{
 		return %output;
 	}
@@ -551,11 +543,21 @@ function json_serialize_array( %object )
 	return %json @ "]";
 }
 
+function json_serialize_string( %value )
+{
+	%value = expandEscape( %value );
+	%value = expandEscape( %value );
+
+	%value = strReplace( %value, "\\\\'", "'" );
+	%value = collapseEscape( %value );
+
+	return "\"" @ %value @ "\"";
+}
+
 function json_serialize( %data )
 {
 	%type = js_type( %data );
 
-	// if ( %type $= "" )
 	if ( %data.class $= "JSObject" )
 	{
 		return json_serialize_object( %data );
@@ -564,33 +566,17 @@ function json_serialize( %data )
 	{
 		return json_serialize_array( %data );
 	}
-	else if ( %data.class $= "JSString" )
-	{
-		return "\"" @ expandEscape( %data.value ) @ "\"";
-	}
-	else if ( %data.class $= "JSNumber" )
-	{
-		return %data.value;
-	}
-	else if ( %data.class $= "JSBool" )
-	{
-		return ( %data.value ? "true" : "false" );
-	}
-	else if ( %data.class $= "JSNull" )
-	{
-		return "null";
-	}
 	else if ( !strLen( %data ) )
 	{
 		return "null";
 	}
-	else if ( strLen( json_match_number( %data, 0 ) ) )
+	else if ( strLen( json_match_number( %data, 0, true ) ) )
 	{
 		return %data;
 	}
 	else
 	{
-		return "\"" @ expandEscape( %data ) @ "\"";
+		return json_serialize_string( %data );
 	}
 }
 
