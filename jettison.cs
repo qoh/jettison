@@ -160,7 +160,10 @@ function json_parse_object( %string, %index )
 			return %object @ "\c0" TAB %index + 1;
 		}
 
-		return -65536;
+		if ( %next !$= "\"" )
+		{
+			return -65536;
+		}
 	}
 
 	while ( true )
