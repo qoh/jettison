@@ -1,3 +1,21 @@
+// Creation methods.
+
+function js_object()
+{
+	return new scriptObject()
+	{
+		class = "JSObject";
+	};
+}
+
+function js_array()
+{
+	return new scriptObject()
+	{
+		class = "JSArray";
+	};
+}
+
 // onAdd method (shared).
 
 function JSObject::onAdd( %this )

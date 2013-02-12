@@ -61,6 +61,12 @@ Wrapper that reads *file* and passes it to *json_loads*.
 **json_loads( json )**  
 Parses *json* and returns the data (see "parse output" section) or -1 if an error occurs while parsing.
 
+**js_object()**  
+Creates a new JSON object and returns it. Used for creating new data.
+
+**js_array()**  
+Creates a new JSON array and returns it. Used for creating new data.
+
 **Note about *json_dumps*:**  
 It cannot determine the exact type of value you're intending to be using. Instead, it inspects the value and does a few tests to try to find out what type of value it is. Here's the exact "order of tests":
 
