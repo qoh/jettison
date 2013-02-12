@@ -95,16 +95,19 @@ Returns the total number of unique keys stored in the object.
 Removes all keys (and their associated value – runs *killTree* on values that are parsed objects).
 
 **JSObject.hasKey( key )**  
-Returns *true* or *false*, depending on whether *key* is stored on the object.
+Returns *true* or *false*, depending on whether *key* exists.
 
 **JSObject.removeKey( key )**  
 Removes *key* from the object (and it's associated value – runs *killTree* on the value if it is a parsed object).
 
 **JSObject.get( key[, default] )**  
-If *key* is stored on the object, returns the value. Otherwise, returns *default* (a blank string by default).
+If *key* exists, returns it's value. Otherwise, returns *default* (a blank string by default).
 
 **JSObject.set( key, value )**  
-Adds *key* to the object if it was not already stored there and updates the value of it to *value*.
+Sets the value of *key* to *value*.
+
+**JSObject.setdefault( key, value )**  
+Sets the value of *key* to *value* if *key* does not exist.
 
 ## JSArray Method Reference
 

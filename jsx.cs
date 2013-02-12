@@ -126,6 +126,7 @@ function JSObject::clear( %this )
 	}
 
 	%this.count = 0;
+	return %this;
 }
 
 function JSObject::hasKey( %this, %key )
@@ -175,7 +176,7 @@ function JSObject::removeKey( %this, %key )
 		%this.key[ %this.count ] = "";
 	}
 
-	return %found;
+	return %this;
 }
 
 function JSObject::get( %this, %key, %default )
@@ -200,6 +201,13 @@ function JSObject::set( %this, %key, %value )
 		%old.killTree();
 	}
 
+	%type = js_type( %value );
+
+	if ( %type $= "array" || %type $= "object" )
+	{
+		%value._js_parent = %this;
+	}
+
 	%this.value[ %key ] = %value;
 
 	for ( %i = 0 ; %i < %this.count ; %i++ )
@@ -216,6 +224,18 @@ function JSObject::set( %this, %key, %value )
 		%this.key[ %this.count ] = %key;
 		%this.count++;
 	}
+
+	return %value;
+}
+
+function JSObject::setdefault( %this, %key, %value )
+{
+	if ( !%this.hasKey( %key ) )
+	{
+		%this.set( %key, %value );
+	}
+
+	return %this.get( %key );
 }
 
 // Private JSArray methods.
@@ -246,12 +266,22 @@ function JSArray::clear( %this )
 	}
 
 	%this.count = 0;
+	return %this;
 }
 
 function JSArray::append( %this, %value )
 {
+	%type = js_type( %value );
+
+	if ( %type $= "array" || %type $= "object" )
+	{
+		%value._js_parent = %this;
+	}
+
 	%this.value[ %this.count ] = %value;
 	%this.count++;
+
+	return %value;
 }
 
 function JSArray::remove( %this, %value )
@@ -286,7 +316,7 @@ function JSArray::remove( %this, %value )
 		%this.value[ %this.count ] = "";
 	}
 
-	return %found;
+	return %this;
 }
 
 function JSArray::contains( %this, %value )
