@@ -638,6 +638,35 @@ function JSONObject::set(%this, %key, %type, %value) {
   }
 }
 
+function JSONObject::remove(%this, %key) {
+	// TODO: Cache key indices for rapid key removal.
+
+	for (%i = 0; %i < %this.keyCount; %i++) {
+		if (%this.keyName[%i] $= %key) {
+			break;
+		}
+	}
+
+	if (%i >= %this.keyCount) {
+		return false;
+	}
+
+	if (%this.keyLegal[%key]) {
+		%this.setField(%key, "");
+	}
+
+	%this.type[%key] = "";
+	%this.value[%key] = "";
+
+	%this.keyExists[%key] = "";
+	%this.keyLegal[%key] = "";
+
+	%this.keyName[%i] = %this.keyName[%this.keyCount--];
+	%this.keyName[%this.keyCount] = "";
+
+	return true;
+}
+
 // --------------------------------------------------------
 // JSONArray implementation
 
