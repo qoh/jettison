@@ -7,7 +7,7 @@
 ///  * `"object"` - Any TorqueScript object. Should implement `::toJSON()`
 ///    for string serialization. Use `.class` to disambiguate.
 
-/// parseJSON: (text: string) -> boolean
+/// jettisonParse: (text: string) -> boolean
 /// Deserialize the JSON string `text`.
 ///
 /// On success, returns false, setting `$JSON::Value` and `$JSON::Type`.
@@ -16,16 +16,16 @@
 ///
 /// Example:
 ///
-///     if (parseJSON(%text)) {
+///     if (jettisonParse(%text)) {
 ///         error("JSON error (at " @ $JSON::Index @ "): " @ $JSON::Error);
 ///         return;
 ///     }
 ///
 ///     echo($JSON::Value @ ": " @ $JSON::Type);
-function parseJSON(%text) {
+function jettisonParse(%text) {
   %length = strlen(%text);
 
-  if (__parseJSON(%text, 0, %length)) {
+  if (__jettisonParse(%text, 0, %length)) {
     // Actual JSON error; pass it through.
     return true;
   }
@@ -56,14 +56,14 @@ function parseJSON(%text) {
   return false;
 }
 
-/// stringifyJSON: (type: string, value: *) -> string
+/// jettisonStringify: (type: string, value: *) -> string
 /// Serialize an arbitrary value into a JSON string.
 ///
 /// Always returns valid JSON, unless:
 ///  * `type` is not a valid JSON type - returns error string
 ///  * `type == "object"` but `value` does not implement `::toJSON()` -
 ///    missing function console error message and empty string return
-function stringifyJSON(%type, %value) {
+function jettisonStringify(%type, %value) {
   switch$ (%type) {
     case "null":
       return "null";
@@ -123,7 +123,7 @@ $JSONUtil::Digit["7"] = true;
 $JSONUtil::Digit["8"] = true;
 $JSONUtil::Digit["9"] = true;
 
-function __parseJSON(%text, %index, %length) {
+function __jettisonParse(%text, %index, %length) {
   // Skip any whitespace before what we're actually looking for.
   // Set %chr in the worst way possible here so we don't have to do an extra
   // string read and assignment after the loop.
@@ -140,18 +140,6 @@ function __parseJSON(%text, %index, %length) {
     return true;
   }
 
-  // Fast path: Single character prefixes.
-  //
-  // TODO: Check how fast `call()` is. If it's fast enough, we could get
-  // away with storing function names in a lookup table based on the first
-  // character and thus do away with this switch.
-  //
-  // NOTE: I don't think switches are significantly faster than if else
-  // chains in TorqueScript (if *at all*), so perhaps this should be
-  // converted to such a chain. This would open up for using a lookup table
-  // for checking the characters [\-0-9]. *Technically* this could still be
-  // done with an if statement above the switch, but at this point it's
-  // just weird. What do we even want to check first here? Probably strings.
   switch$ (%chr) {
     case "\"":
       %start = %index;
@@ -177,7 +165,7 @@ function __parseJSON(%text, %index, %length) {
 
           // This `%index++ - 1` is gross. I wish TS had proper
           // unary assignment operators (in terms of what they evaluate to).
-          switch$ (getSubStr(%text, %index++ - 1, 1)) {
+          switch$ (getSubStr(%text, %index, 1)) {
             case "\"": %out = %out @ "\"";
             case "\\": %out = %out @ "\\";
             case  "/": %out = %out @ "/";
@@ -220,7 +208,7 @@ function __parseJSON(%text, %index, %length) {
       %index++;
 
       %object = new ScriptObject() {
-        class = "JSONObject";
+        class = "JettisonObject";
         keyCount = 0;
       };
 
@@ -284,7 +272,7 @@ function __parseJSON(%text, %index, %length) {
 
         // TODO: This only needs to check for JSON strings. Consider moving
         // that into a specialized function.
-        if (__parseJSON(%text, %index, %length)) {
+        if (__jettisonParse(%text, %index, %length)) {
           %object.delete();
           return true;
         }
@@ -324,7 +312,7 @@ function __parseJSON(%text, %index, %length) {
         // Skip *even* more internal whitespace
         while (strpos(" \t\r\n", %chr = getSubStr(%text, %index++, 1)) != -1) {}
 
-        if (__parseJSON(%text, %index, %length)) {
+        if (__jettisonParse(%text, %index, %length)) {
           %object.delete();
           return true;
         }
@@ -345,7 +333,7 @@ function __parseJSON(%text, %index, %length) {
       %index++;
 
       %array = new ScriptObject() {
-        class = "JSONArray";
+        class = "JettisonArray";
         length = %arrayLength = 0;
       };
 
@@ -399,7 +387,7 @@ function __parseJSON(%text, %index, %length) {
           }
         }
 
-        if (__parseJSON(%text, %index, %length)) {
+        if (__jettisonParse(%text, %index, %length)) {
           %array.delete();
           return true;
         }
@@ -503,7 +491,7 @@ function __parseJSON(%text, %index, %length) {
 }
 
 // --------------------------------------------------------
-// Field access helper for JSONObject
+// Field access helper for JettisonObject
 
 function SimObject::getField(%this, %name) {
   switch (stripos("_abcdefghijklmnopqrstuvwxyz", getSubStr(%name, 0, 1))) {
@@ -572,20 +560,20 @@ function SimObject::setField(%this, %name, %value) {
 }
 
 // --------------------------------------------------------
-// JSONObject implementation
+// JettisonObject implementation
 
-$JSONObject::IllegalName["class"] = true;
-$JSONObject::IllegalName["superClass"] = true;
-$JSONObject::IllegalName["keyCount"] = true;
+$JettisonObject::IllegalName["class"] = true;
+$JettisonObject::IllegalName["superClass"] = true;
+$JettisonObject::IllegalName["keyCount"] = true;
 
-function JSONObject() {
+function JettisonObject() {
   return new ScriptObject() {
-    class = "JSONObject";
+    class = "JettisonObject";
     keyCount = 0;
   };
 }
 
-function JSONObject::onRemove(%this) {
+function JettisonObject::onRemove(%this) {
   for (%i = 0; %i < %this.keyCount; %i++) {
     %key = %this.keyName[%i];
     %value = %this.value[%key];
@@ -596,29 +584,29 @@ function JSONObject::onRemove(%this) {
   }
 }
 
-function JSONObject::toJSON(%this) {
+function JettisonObject::toJSON(%this) {
   for (%i = 0; %i < %this.keyCount; %i++) {
     %key = %this.keyName[%i];
 
     if (%i) { // sacrificing DRY for performance, woo
       %out = %out @
-        "," @ stringifyJSON("string", %key) @
-        ":" @ stringifyJSON(%this.type[%key], %this.value[%key]);
+        "," @ jettisonStringify("string", %key) @
+        ":" @ jettisonStringify(%this.type[%key], %this.value[%key]);
     } else {
       %out = %out @
-              stringifyJSON("string", %key) @
-        ":" @ stringifyJSON(%this.type[%key], %this.value[%key]);
+              jettisonStringify("string", %key) @
+        ":" @ jettisonStringify(%this.type[%key], %this.value[%key]);
     }
   }
 
   return "{" @ %out @ "}";
 }
 
-function JSONObject::set(%this, %key, %type, %value) {
+function JettisonObject::set(%this, %key, %type, %value) {
   if (!%this.keyExists[%key]) {
     // TODO: Review how slow this is.
     // Being able to access keys as fields is awesome, though.
-    %this.keyLegal[%key] = !$JSONObject::IllegalName[%key] &&
+    %this.keyLegal[%key] = !$JettisonObject::IllegalName[%key] &&
       (strlen(%key) <= 4 || getSubStr(%key, 0, 4) !$= "type"     ) &&
       (strlen(%key) <= 5 || getSubStr(%key, 0, 5) !$= "value"    ) &&
       (strlen(%key) <= 7 || getSubStr(%key, 0, 7) !$= "keyName"  ) &&
@@ -638,7 +626,7 @@ function JSONObject::set(%this, %key, %type, %value) {
   }
 }
 
-function JSONObject::remove(%this, %key) {
+function JettisonObject::remove(%this, %key) {
 	// TODO: Cache key indices for rapid key removal.
 
 	for (%i = 0; %i < %this.keyCount; %i++) {
@@ -668,16 +656,16 @@ function JSONObject::remove(%this, %key) {
 }
 
 // --------------------------------------------------------
-// JSONArray implementation
+// JettisonArray implementation
 
-function JSONArray() {
+function JettisonArray() {
   return new ScriptObject() {
-    class = "JSONArray";
-    keyCount = 0;
+    class = "JettisonArray";
+    length = 0;
   };
 }
 
-function JSONArray::onRemove(%this) {
+function JettisonArray::onRemove(%this) {
   for (%i = 0; %i < %this.length; %i++) {
     %value = %this.value[%i];
 
@@ -687,19 +675,19 @@ function JSONArray::onRemove(%this) {
   }
 }
 
-function JSONArray::toJSON(%this) {
+function JettisonArray::toJSON(%this) {
   for (%i = 0; %i < %this.length; %i++) {
     if (%i) {
-      %out = %out @ "," @ stringifyJSON(%this.type[%i], %this.value[%i]);
+      %out = %out @ "," @ jettisonStringify(%this.type[%i], %this.value[%i]);
     } else {
-      %out = %out       @ stringifyJSON(%this.type[%i], %this.value[%i]);
+      %out = %out       @ jettisonStringify(%this.type[%i], %this.value[%i]);
     }
   }
 
   return "[" @ %out @ "]";
 }
 
-function JSONArray::push(%this, %type, %value) {
+function JettisonArray::push(%this, %type, %value) {
   %this.type[%this.length] = %type;
   %this.value[%this.length] = %value;
   %this.length++;
@@ -708,7 +696,7 @@ function JSONArray::push(%this, %type, %value) {
 // ...
 
 // function testJSON(%text) {
-//   if (parseJSON(%text)) {
+//   if (jettisonParse(%text)) {
 //     warn("ERROR: " @ $JSON::Index @ ": " @ $JSON::Error);
 //     return;
 //   }
@@ -716,7 +704,7 @@ function JSONArray::push(%this, %type, %value) {
 //   echo($JSON::Type @ ": " @ $JSON::Value);
 //
 //   // Handle buffer overruns
-//   %string = " -> " @ stringifyJSON($JSON::Type, $JSON::Value);
+//   %string = " -> " @ jettisonStringify($JSON::Type, $JSON::Value);
 //   echo(getSubStr(%string, 0, 1023));
 //
 //   if ($JSON::Type $= "object") {
@@ -725,7 +713,7 @@ function JSONArray::push(%this, %type, %value) {
 // }
 
 // File I/O helpers
-function readFileJSON(%filename) {
+function jettisonReadFile(%filename) {
   %file = new FileObject();
 
   if (!%file.openForRead(%filename)) {
@@ -744,17 +732,17 @@ function readFileJSON(%filename) {
   %file.close();
   %file.delete();
 
-  return parseJSON(%text);
+  return jettisonParse(%text);
 }
 
-function writeFileJSON(%filename, %type, %value) {
+function jettisonWriteFile(%filename, %type, %value) {
   %file = new FileObject();
 
   if (!%file.openForWrite(%filename)) {
     return "failed to open file for reading";
   }
 
-  %file.writeLine(stringifyJSON(%type, %value));
+  %file.writeLine(jettisonStringify(%type, %value));
 
   %file.close();
   %file.delete();

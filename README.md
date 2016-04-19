@@ -7,7 +7,7 @@
 Basic usage:
 
 ```csharp
-if (parseJSON(...)) {
+if (jettisonParse(...)) {
   // Error position is available through $JSON::Index
   error("Failed to parse JSON: " @ $JSON::Error);
   return;
@@ -29,7 +29,7 @@ Serialization:
 %data.position.push("number", 1);
 %data.position.push("number", 2);
 %data.set("health", "number", 0);
-%json = stringifyJSON("object", %data);
+%json = jettisonStringify("object", %data);
 ```
 
 ```csharp
@@ -76,7 +76,7 @@ All the valid type names you can expect to get from `$JSON::Type`, and which can
 
 ## API
 
-#### `parseJSON(text: string) -> boolean`
+#### `jettisonParse(text: string) -> boolean`
 
 Attempt to parse an arbitrary JSON string, ignoring any whitespace around it.
 
@@ -87,7 +87,7 @@ If there was no error, `false` is returned, `$JSON::Value` is set to the result,
 Example:
 
 ```csharp
-if (parseJSON(%text)) {
+if (jettisonParse(%text)) {
   error("Parse error at " @ $JSON::Index @ ": " @ $JSON::Error);
   return;
 }
@@ -99,7 +99,7 @@ The only cleanup required is when this function returns true and `$JSON::Value` 
 
 ---
 
-#### `stringifyJSON(type: string, value: *) -> string`
+#### `jettisonStringify(type: string, value: *) -> string`
 
 Serialize an arbitrary value into a JSON string.
 
@@ -111,23 +111,23 @@ Will never fail or display errors except for the following cases:
 Example:
 
 ```csharp
-stringifyJSON("boolean", true)          -> "true"
-stringifyJSON("number", 3.14)           -> "3.14"
-stringifyJSON("string", "hello\nworld") -> "\"hello\\nworld\""
-stringifyJSON("object", JSONObject())   -> "{}"
+jettisonStringify("boolean", true)          -> "true"
+jettisonStringify("number", 3.14)           -> "3.14"
+jettisonStringify("string", "hello\nworld") -> "\"hello\\nworld\""
+jettisonStringify("object", JSONObject())   -> "{}"
 ```
 
 ---
 
-#### `readFileJSON(filename: string) -> boolean`
+#### `jettisonReadFile(filename: string) -> boolean`
 
-#### `writeFileJSON(filename: string, type: string, value: *) -> string`
+#### `jettisonWriteFile(filename: string, type: string, value: *) -> string`
 
 Helper functions for parsing JSON from/serializing JSON to a file.
 
-`readFileJSON` behaves exactly like `parseJSON`.
+`jettisonReadFile` behaves exactly like `jettisonParse`.
 
-`writeFileJSON` returns `""` on success or an error message on failure.
+`jettisonWriteFile` returns `""` on success or an error message on failure.
 
 ---
 
@@ -166,7 +166,7 @@ Helper functions for parsing JSON from/serializing JSON to a file.
 >
 > #### `toJSON() -> string`
 >
-> Serialize this object into a JSON string. Should not be used directly (use `stringifyJSON` instead).
+> Serialize this object into a JSON string. Should not be used directly (use `jettisonStringify` instead).
 >
 > #### `set(key: string, type: string, value: *)`
 >
@@ -197,7 +197,7 @@ Helper functions for parsing JSON from/serializing JSON to a file.
 >
 > #### `toJSON() -> string`
 >
-> Serialize this array into a JSON string. Should not be used directly (use `stringifyJSON` instead).
+> Serialize this array into a JSON string. Should not be used directly (use `jettisonStringify` instead).
 >
 > #### `push(type: string, value: *)`
 >
