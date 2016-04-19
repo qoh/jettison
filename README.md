@@ -24,8 +24,8 @@ if ($JSON::Type $= "object") {
 Serialization:
 
 ```csharp
-%data = JSONObject();
-%data.set("position", "object", JSONArray());
+%data = JettisonObject();
+%data.set("position", "object", JettisonArray());
 %data.position.push("number", 1);
 %data.position.push("number", 2);
 %data.set("health", "number", 0);
@@ -47,7 +47,7 @@ Data structures:
 //   ]
 // }
 
-data.class      -> "JSONObject"
+data.class      -> "JettisonObject"
 data.keyCount   -> 1
 data.keyName[0] -> "admins"
 
@@ -72,7 +72,7 @@ All the valid type names you can expect to get from `$JSON::Type`, and which can
 * `"string"`
 * `"object"` - Value should be an object that implements `::toJSON()`
 
-**Note**: Objects and arrays share the same type name. They can be disambiguated between using the `class` field (`"JSONObject"` versus `"JSONArray"`).
+**Note**: Objects and arrays share the same type name. They can be disambiguated between using the `class` field (`"JettisonObject"` versus `"JettisonArray"`).
 
 ## API
 
@@ -114,7 +114,7 @@ Example:
 jettisonStringify("boolean", true)          -> "true"
 jettisonStringify("number", 3.14)           -> "3.14"
 jettisonStringify("string", "hello\nworld") -> "\"hello\\nworld\""
-jettisonStringify("object", JSONObject())   -> "{}"
+jettisonStringify("object", JettisonObject())   -> "{}"
 ```
 
 ---
@@ -131,7 +131,7 @@ Helper functions for parsing JSON from/serializing JSON to a file.
 
 ---
 
-#### `class JSONObject`
+#### `class JettisonObject`
 
 > Represents a plain JSON object (key-value store).  
 >
@@ -178,7 +178,7 @@ Helper functions for parsing JSON from/serializing JSON to a file.
 
 ---
 
-#### `class JSONArray`
+#### `class JettisonArray`
 
 > Represents a JSON array (list/vector).
 >
