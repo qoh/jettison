@@ -744,7 +744,7 @@ function readFileJSON(%filename) {
   %file.close();
   %file.delete();
 
-  return parseJSON(%file);
+  return parseJSON(%text);
 }
 
 function writeFileJSON(%filename, %type, %value) {
